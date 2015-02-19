@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+#
+# vim: set ts=4 sw=4 sts=0 et :
+
+from __future__ import print_function
+
+import pexpect, os, sys, getopt, time, re
+import pdb
+
+
+def usage(code):
+    print('Usage: %s [-d] [-c cmd] [-i input] [-p port] [-s server]\n       [-t timeout] [-u user] [-P password] [-w wait] chatspec\n' % os.path.basename(__file__), file=sys.stderr)
+    print('       chatspec: input1 [output1 [input2 [output2]...]]', file=sys.stderr)
+    sys.exit(code)
+
+def main(argv):
+    # Options
+    cmd = ''
+    server = 'localhost'
+    port = 23
+    tmout = 300 # Total timeout
+    cycle = 10  # Cycle timeout
+    input = '>'
+    username = 'cisco'
+    password = 'cisco'
+    debug = 0
+
+    # Local vars
+    tries = 0
+
+    # Cmdline parsing
+    try:
+        opts, args = getopt.getopt(argv,'c:di:p:s:t:u:P:x:',['--cmd=','--debug','--input=','--port=','--server=','--timeout=','--username=','--password=','--wait='])
+    except getopt.GetoptError:
+        usage(2)
+    for opt, arg in opts:
+        if opt in ('-c','--cmd'):
+            cmd = arg + ' '
+        if opt in ('-d','--debug'):
+            debug += 1
+        if opt in ('-p','--port'):
+            port = arg
+        if opt in ('-s','--server'):
+            server = arg
+        if opt in ('-t','--timeout'):
+            tmout = int(arg)
+        if opt in ('-u','--username'):
+            username = arg
+        if opt in ('-P','--password'):
+            password = arg
+        if opt in ('-w','--wait'):
+            cycle = int(arg)
+    if server == '':
+        usage(2)
+    inputs = args
+
+    # The meat
+    tospawn = cmd + 'telnet %s %s' % (server,port)
+    if debug > 0:
+        print('Spawning: "%s"' % tospawn, file=sys.stderr)
+    child = pexpect.spawn(tospawn, timeout=cycle)
+
+    if debug > 0:
+        child.logfile = sys.stdout
+    try:
+        child.expect("Escape character is .*", timeout=cycle)
+    except pexpect.EOF as e:
+        print('Error: EOF on input connecting to %s %s' % (server,port), file=sys.stderr)
+        exit(1)
+
+    # Wait for the system to boot
+    first = last = time.time()
+    userre = re.compile('^[Uu]sername: ')
+    passre = re.compile('^[Pp]assword: ')
+
+    child.send("\r")
+    done = False
+    while not done:
+        try:
+            if debug > 1:
+                print('\nTrying to match: "%s"' % inputs[0], file=sys.stderr)
+            expr = re.compile(inputs[0])
+            lines = child.read_nonblocking(size=100)
+            lines = re.sub('\r','',lines)
+            if len(lines) == 0:
+                continue
+            for line in lines.split('\n'):
+                if debug > 1:
+                    print('\nLine is "%s"' % line, file=sys.stderr)
+                    print('\nLen is %d' % len(line), file=sys.stderr)
+                if expr.match(line):
+                    if debug > 0:
+                        sys.stdout.write(line)
+                    if len(inputs) > 1:
+                        output = inputs[1]
+                        child.sendline(output)
+                        if debug > 0:
+                            sys.stdout.write(output)
+                        if len(inputs) > 2:
+                            inputs = inputs[2:]
+                        else:
+                            done = True
+                    else:
+                        done = True
+                    continue
+                elif userre.match(line):
+                    child.sendline(username)
+                    last = time.time()
+                elif passre.match(line):
+                    child.sendline(password)
+                    last = time.time()
+            if len(lines) > 0:
+                #print('\nGot something, resetting counter: "%s"' % line, file=sys.stderr)
+                last = time.time()
+            else:
+                sleep(1)
+
+        except pexpect.TIMEOUT as e:
+            if time.time() - first > tmout:
+                print('\nTimeout of %d seconds exceeded, giving up.' % tmout, file=sys.stderr)
+                exit(1)
+            elif time.time() - last > cycle:
+                print('\nCycle timeout of %d seconds exceeded, sending CR.' % cycle, file=sys.stderr)
+                child.send("\r")
+
+        except:
+            print('Exception: %s' % sys.exc_info()[0], file=sys.stderr)
+            exit(1)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+

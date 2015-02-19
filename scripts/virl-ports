@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import sys, getopt, os, json
+
+def usage(code):
+    print('Usage: %s [-d] [-h] [-f file]\n' % os.path.basename(__file__), file=sys.stderr)
+    print('Lists port numbers', file=sys.stderr)
+    sys.exit(code)
+    
+def main(argv):
+    file = '-'
+    mode = 'telnet'
+    port = '0'
+
+    try:
+        opts, args = getopt.getopt(argv,'dhf:',['--debug','--help','--file='])
+    except getopt.GetoptError:
+        usage(2)
+    for opt, arg in opts:
+        if opt in ("-d", "--debug"):
+            debug += 1
+        elif opt in ('-h', '--help'):
+            usage(0)
+        elif opt in ('-f', '--file'):
+            file = arg
+
+    if file == '-':
+        f = sys.stdin
+    else:
+        f = open(file)
+
+    data=eval(str(f.read()))
+    for key in data:
+        if data[key]:
+            (ip, port) = data[key].split(':')
+            print("%s %s %s" % (key, ip, port))
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
+

@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import sys, getopt, os
+from lxml import etree
+import virl_utils
+
+def usage(code):
+    print('Usage: %s [-d] [-h] [-i ipv4] [-s subtype] [-ttype] [-file]\n' % os.path.basename(__file__), file=sys.stderr)
+    print('Lists nodes that match the requested criteria.', file=sys.stderr)
+    sys.exit(code)
+    
+def main(argv):
+    file = '-'
+    ipv4 = None
+    subtype = None
+    type = None
+
+    try:
+        opts, args = getopt.getopt(argv,'dhi:f:s:t:',['--debug','--help','--ipv4=','--file=','--subtype=','--type='])
+    except getopt.GetoptError:
+        usage(2)
+    for opt, arg in opts:
+        if opt in ("-d", "--debug"):
+            debug += 1
+        elif opt in ('-h', '--help'):
+            usage(0)
+        elif opt in ('-i', '--ipv4'):
+            ipv4 = arg
+        elif opt in ('-f', '--file'):
+            file = arg
+        elif opt in ('-s', '--subtype'):
+            subtype = arg
+        elif opt in ('-t', '--type'):
+            type = arg
+
+    try:
+        root = etree.parse(file).getroot()
+        nodes = virl_utils.get_nodes_xml(root)
+        for node in nodes:
+            if subtype and node.get('subtype') != subtype:
+                continue
+            if type and node.get('type') != type:
+                continue
+            if ipv4 and node.get('ipv4') != ipv4:
+                continue
+            print(node.get('name'))
+    except Exception as e:
+        print('Error: ' + e.args[0], file=sys.stderr)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
+

@@ -1,0 +1,14 @@
+setup.py
+virl_utils.py
+scripts/virl-dictval
+scripts/virl-fixroot.sh
+scripts/virl-images
+scripts/virl-ios-chat
+scripts/virl-ios-login
+scripts/virl-ios-login-chat
+scripts/virl-ios-wait
+scripts/virl-mk-ssh-config
+scripts/virl-nodes
+scripts/virl-node-val
+scripts/virl-ports
+scripts/virl-subdictval

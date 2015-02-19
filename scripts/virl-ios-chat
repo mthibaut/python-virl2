@@ -1,0 +1,106 @@
+#!/usr/bin/env python
+#
+# vim: set ts=4 sw=4 sts=0 et :
+
+from __future__ import print_function
+
+import pexpect, os, sys, getopt, time, re
+
+
+def usage(code):
+    print('Usage: %s [-d] [-c cmd] [-s server] [-p port] [-t timeout] input1 output1 [input2 output2... inputn [outputn]]\n' % os.path.basename(__file__), file=sys.stderr)
+    print('Chat with a remote.', file=sys.stderr)
+    sys.exit(code)
+
+def main(argv):
+    # Options
+    server = 'localhost'
+    port = 23
+    tmout = 300 # Total timeout
+    cmd = ''
+    username = 'cisco'
+    password = 'cisco'
+    debug = 0
+
+    # Local vars
+    tries = 0
+
+    # Cmdline parsing
+    try:
+        opts, args = getopt.getopt(argv,'dc:p:s:t:',['debug','cmd=','port=','server=','timeout='])
+    except getopt.GetoptError:
+        usage(2)
+    for opt, arg in opts:
+        if opt in ('-d','--debug'):
+            debug += 1
+        if opt in ('-c','--cmd'):
+            cmd = arg + ' '
+        if opt in ('-p','--port'):
+            port = arg
+        if opt in ('-s','--server'):
+            server = arg
+        if opt in ('-t','--timeout'):
+            tmout = int(arg)
+    if server == '':
+        usage(2)
+    inputs = args
+    if len(inputs) < 1:
+        usage(2)
+
+    if debug:
+        print('\nDebug level: %d' % debug, file=sys.stderr)
+
+    # The meat
+    tospawn = cmd + 'telnet %s %s' % (server,port)
+    if debug > 0:
+        print('Spawning: "%s"' % tospawn, file=sys.stderr)
+    child = pexpect.spawn(tospawn, timeout=tmout)
+
+    if debug > 0:
+        child.logfile = sys.stdout
+    try:
+        child.expect("Escape character is .*", timeout=10)
+    except pexpect.EOF as e:
+        exit(1)
+
+    # Wait for the system to boot
+    first = last = time.time()
+    expr = re.compile(inputs[0])
+    done = False
+    while not done:
+        try:
+            line = child.readline()
+            line = re.sub('\r','',line)
+            line = re.sub('\n','',line)
+            if len(line) == 0:
+                continue
+            if debug > 1:
+                print('\nLine is length %d, text is "%s"' % (len(line), line), file=sys.stderr)
+            if expr.match(line):
+                if debug > 0:
+                    sys.stdout.write(line)
+                if len(inputs) == 1:
+                    print('\nSuccess, exiting.', file=sys.stderr)
+                    done = True
+                    continue
+                output = inputs[1]
+                child.sendline(output)
+                if len(inputs) == 2:
+                    print('\nSuccess, exiting.', file=sys.stderr)
+                    done = True
+                    continue
+                inputs = inputs[2:]
+                expr = re.compile(inputs[0])
+
+        except pexpect.TIMEOUT as e:
+            if time.time() - first > tmout:
+                print('\nTimeout of %d seconds exceeded, giving up.' % tmout, file=sys.stderr)
+                exit(1)
+
+        except:
+            print('Exception: %s' % sys.exc_info()[0], file=sys.stderr)
+            exit(2)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+

@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import sys, os, getopt
+from lxml import etree
+import virl_utils
+
+def usage(code):
+    print('Usage: %s [-d] [-i identity] [-f file] [-o option] [-r user]\n       [-u user] -s server [NODE1 [NODE2...]]\n' % os.path.basename(__file__), file=sys.stderr)
+    print('Dumps out an ssh_config file for connecting to the virl nodes.', file=sys.stderr)
+    sys.exit(code)
+    
+def main(argv):
+    file = '-'
+    ident = None
+    user = 'guest'
+    remote = 'cisco'
+    debug = 0
+    options = []
+
+    try:
+        opts, args = getopt.getopt(argv,'dh:i:f:o:r:s:',['--debug','--help','--identity=','--file=','--option','--server=','--remoteuser='])
+    except getopt.GetoptError:
+        usage(2)
+    for opt, arg in opts:
+        if opt in ("-d", "--debug"):
+            debug += 1
+        elif opt in ('-h', '--help'):
+            usage(0)
+        elif opt in ('-i', '--identity'):
+            ident = arg
+        elif opt in ('-f', '--file'):
+            file = arg
+        elif opt in ('-o', '--option'):
+            options.append(arg)
+        elif opt in ('-r', '--remoteuser'):
+            remote = arg
+        elif opt in ('-s', '--server'):
+            server = arg
+        elif opt in ('-u', '--user'):
+            user = arg
+    nodes = args
+
+    sshcmd = "ssh -o 'StrictHostkeyChecking no' -o 'UserKnownHostsFile /dev/null'"
+    identline = ''
+    if ident:
+        sshcmd += ' -i %s' % ident
+        identline = '    IdentityFile %s\n' % ident
+
+    try:
+        root = etree.parse(file).getroot()
+        if len(nodes) == 0:
+            nodes = virl_utils.get_nodes(root)
+            if debug > 0:
+                print('Nodes: %s...' % str(nodes), file=sys.stderr)
+        port = virl_utils.get_entrytext_by_key(root, 'AutoNetkit.external_port')
+        for node in nodes:
+            if debug > 0:
+                print('Node %s...' % node, file=sys.stderr)
+            try:
+                nodeip = virl_utils.get_node_entry_by_key(root, node, 'AutoNetkit.mgmt_ip')
+                s = ('Host %s\n' % node +
+                    '    HostName %s\n' % nodeip +
+                    '    ProxyCommand %s' % sshcmd + ' -W %h:%p -p ' + 
+                        '%s %s@%s 2>/dev/null\n' % (port, user, server))
+                print(s)
+            except virl_utils.EntryError:
+                pass
+
+    except Exception as e:
+        print('Error: ' + e.args[0], file=sys.stderr)
+
+    # Make an entry for the intermediate
+    print('Host %s\n' % server +
+          '    User %s\n' % user +
+          '    Port %s\n' % port)
+
+    print('Host *\n' +
+               identline +
+          '    User %s\n' % remote +
+          '    StrictHostkeyChecking no\n' +
+          '    UserKnownHostsFile /dev/null\n' +
+          '    LogLevel QUIET')
+    for opt in options:
+        print('    %s' % opt)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
+

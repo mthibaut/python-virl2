@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import sys, getopt, os, pprint
+
+def usage(code):
+    print('Usage: %s [-f file] entry [subentry [subsubentry...]]\n' % os.path.basename(__file__), file=sys.stderr)
+    print('Prints out the requested value from a virl file.', file=sys.stderr)
+    sys.exit(code)
+
+def main(argv):
+    file = '-'
+    node = None
+    try:
+        opts, args = getopt.getopt(argv,'f:hn:',['file='])
+    except getopt.GetoptError:
+        usage(1)
+    for opt, arg in opts:
+        if opt in ('-h', '--help'):
+            usage(0)
+        elif opt in ('-f','--file'):
+            file = arg
+    if len(args) < 1:
+        usage(1)
+    keys = args
+
+    if file == '-':
+        f = sys.stdin
+    else:
+        f = open(file)
+    data=eval(str(f.read()))
+    for key in keys:
+        data = data[key]
+
+    pprint.pprint(data)
+
+if __name__ == "__main__":
+   main(sys.argv[1:])
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
