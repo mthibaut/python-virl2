@@ -46,4 +46,4 @@ Examples
 
 You can find examples here:
 
-* [Jenkins](examples/README.md)
+* [Jenkins](/examples/README.md)
