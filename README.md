@@ -44,6 +44,4 @@ API
 Examples
 ========
 
-You can find examples here:
-
-* [Jenkins](/examples/README.md)
+You can find elaborated examples in the examples/ directory.
