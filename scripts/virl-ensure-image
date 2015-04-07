@@ -4,17 +4,15 @@ from __future__ import print_function
 import sys, getopt, os, pprint
 
 def usage(code):
-    print('Usage: %s [-r release] [-s subtype] [-v version] [-f file]\n' % os.path.basename(__file__), file=sys.stderr)
-    print('Lists all images.', file=sys.stderr)
+    print('Usage: %s -s subtype [-i srvimage|-f file|-u url] [-r release] [-v version]\n' % os.path.basename(__file__), file=sys.stderr)
+    print('Ensure an image exists on the server', file=sys.stderr)
     sys.exit(code)
 
 def main(argv):
     file = '-'
     filtsubtype = None
-    filtrelease = None
-    filtversion = None
     try:
-        opts, args = getopt.getopt(argv,'f:hr:s:v:',['help','file=','release=','subtype=','version='])
+        opts, args = getopt.getopt(argv,'f:hi:r:s:u:v:',['--help','--file=','--image','--release','--subtype=','--url','--version'])
     except getopt.GetoptError:
         usage(1)
     for opt, arg in opts:
@@ -22,13 +20,16 @@ def main(argv):
             usage(0)
         elif opt in ('-f','--file'):
             file = arg
+        elif opt in ('-i','--image'):
+            image = arg
         elif opt in ('-r','--release'):
-            filtrelease = arg
+            release = arg
         elif opt in ('-s','--subtype'):
             filtsubtype = arg
+        elif opt in ('-u','--url'):
+            url = arg
         elif opt in ('-v','--version'):
-            filtversion = arg
-    keys = args
+            version = arg
 
     if file == '-':
         f = sys.stdin
@@ -38,32 +39,16 @@ def main(argv):
 
     images = data['images']
     for image in images:
-        id = image['id']
         props = image['properties']
-        
         subtype = props['subtype']
         if filtsubtype and filtsubtype != subtype:
             continue
-
+        id = image['id']
         try:
             release = props['release']
-            disprelease = ' ' + release
+            print('%s %s %s' % (id, subtype.replace(' ','_'), release))
         except:
-            release = ''
-            disprelease = '-'
-        if filtrelease and filtrelease != release:
-            continue
-        
-        try:
-            version = props['version']
-            dispversion = ' ' + version
-        except:
-            version = ''
-            dispversion = '-'
-        if filtversion and filtversion != version:
-            continue
-
-        print('%s %s %s %s' % (id, subtype.replace(' ','_'), disprelease, dispversion))
+            print('%s %s' % (id, subtype.replace(' ','_')))
 
 if __name__ == "__main__":
    main(sys.argv[1:])

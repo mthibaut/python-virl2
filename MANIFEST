@@ -2,6 +2,7 @@ setup.py
 virl_utils.py
 scripts/virl-dictval
 scripts/virl-fixroot.sh
+scripts/virl-flavors
 scripts/virl-images
 scripts/virl-ios-chat
 scripts/virl-ios-login

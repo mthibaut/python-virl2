@@ -13,14 +13,14 @@
 
 mkdir -p ${HOME}/bin
 cat > ${HOME}/bin/askpass <<_EOF_
-#!/bin/sh
+#!/bin/bash
 echo $PASSWORD
 _EOF_
 chmod +x ${HOME}/bin/askpass
 export SUDO_ASKPASS=${HOME}/bin/askpass
 
 cat > ${HOME}/bin/fixroot <<_EOF_
-#!/bin/sh
+#!/bin/bash
 set -x
 sed -i 's/^#?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 mkdir -p /root/.ssh

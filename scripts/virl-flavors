@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import sys, getopt, os, pprint
+
+def usage(code):
+    print('Usage: %s [-c vcpus] [-d disk] [-n name] [-r ram] [-s swap] [-f file]\n' % os.path.basename(__file__), file=sys.stderr)
+    print('Lists all images.', file=sys.stderr)
+    sys.exit(code)
+
+def main(argv):
+    file     = '-'
+    filtcpus = None
+    filtdisk = None
+    filtname = None
+    filtram  = None
+    filtswap = None
+    try:
+        opts, args = getopt.getopt(argv,'hc:d:n:r:s:f:',['help','cpus=','disk=','name=','ram=','swap=','file='])
+    except getopt.GetoptError:
+        usage(1)
+    for opt, arg in opts:
+        if opt in ('-h', '--help'):
+            usage(0)
+        elif opt in ('-f','--file'):
+            file = arg
+        elif opt in ('-c','--cpus'):
+            filtcpus = arg
+        elif opt in ('-d','--disk'):
+            filtdisk = arg
+        elif opt in ('-n','--name'):
+            filtname = arg
+        elif opt in ('-r','--ram'):
+            filtram  = arg
+        elif opt in ('-s','--swap'):
+            filtswap = arg
+
+    if file == '-':
+        f = sys.stdin
+    else:
+        f = open(file)
+    data=eval(str(f.read()))
+
+    flavors = data['flavors']
+    for flavor in flavors:
+        id   = flavor['id']
+        name = flavor['name']
+        cpus = flavor['vcpus']
+        ram  = flavor['ram']
+        disk = flavor['disk']
+        swap = flavor['swap']
+        
+        if filtname and filtname != name:
+            continue
+        if filtcpus and filtcpus != cpus:
+            continue
+        if filtram and filtram != ram:
+            continue
+        if filtdisk and filtdisk != disk:
+            continue
+        if filtswap and filtswap != swap:
+            continue
+
+        if len(swap) == 0:
+            swap = '-'
+
+        print('%s %s %d %d %d %s' % (id, name.replace(' ','_'), cpus, ram, disk, swap))
+
+if __name__ == "__main__":
+   main(sys.argv[1:])
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
